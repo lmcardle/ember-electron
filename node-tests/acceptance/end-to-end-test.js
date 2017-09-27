@@ -64,7 +64,7 @@ describe('end-to-end', function() {
     }).then(() => {
       // Prevent yarn caching from screwing us
       let packageJson = readJsonSync(path.join('package', 'package.json'));
-      packageJson.version = `packageJson.version-${new Date().getTime()}`;
+      packageJson.version = `${packageJson.version}-${new Date().getTime()}`;
       writeJsonSync(path.join('package', 'package.json'), packageJson);
     });
   });
