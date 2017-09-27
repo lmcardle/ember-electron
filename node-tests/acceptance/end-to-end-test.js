@@ -56,6 +56,8 @@ describe('end-to-end', function() {
     return run('yarn', ['pack', '--filename', path.join(packageTmpDir, 'ember-electron.tgz')]).then(() => {
       process.chdir(packageTmpDir);
 
+      console.log(execa.sync('ls', ['-l']).stdout.toString());
+
       // yarn won't install from a gzipped tarball, and try as I might I can't
       // get node-tar or tar.gz to untar the tarballs created by yarn or npm
       return run('tar', ['-xzf', 'ember-electron.tgz']);
