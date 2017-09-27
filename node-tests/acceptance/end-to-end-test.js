@@ -24,6 +24,7 @@ function run(cmd, args, opts = {}) {
 describe('end-to-end', function() {
   this.timeout(5 * 60 * 1000);
 
+  let oldPath;
   let rootDir = process.cwd();
   let emberPath = path.join(rootDir, 'node_modules', '.bin', 'ember');
   let { name: packageTmpDir } = tmp.dirSync();
@@ -41,6 +42,17 @@ describe('end-to-end', function() {
   before(() => {
     this.timeout(10 * 60 * 1000);
 
+    oldPath = process.env.PATH;
+
+    // If we're running via a yarn script like `yarn test`, then we'll have
+    // a whole bunch of npm_* environment variables set by yarn that can mess
+    // things up, so let's scrub them.
+    Object.keys(process.env).forEach((key) => {
+      if (key.startsWith('npm_')) {
+        delete process.env[key];
+      }
+    });
+
     return run('yarn', ['pack', '--filename', path.join(packageTmpDir, 'ember-electron.tgz')]).then(() => {
       process.chdir(packageTmpDir);
 
@@ -53,6 +65,10 @@ describe('end-to-end', function() {
       packageJson.version = `packageJson.version-${new Date().getTime()}`;
       writeJsonSync(path.join('package', 'package.json'), packageJson);
     });
+  });
+
+  after(() => {
+    process.env.PATH = oldPath;
   });
 
   afterEach(() => {
@@ -79,8 +95,6 @@ describe('end-to-end', function() {
   });
 
   describe('with npm', function() {
-    let oldPath;
-
     before(function() {
       // We need to make yarn-or-npm choose npm even if yarn is installed, so
       // we'll create a script called 'yarn' that fails to run and set it up
@@ -88,17 +102,7 @@ describe('end-to-end', function() {
       let { name: fakeBinDir } = tmp.dirSync();
       let fakeYarnPath = path.join(fakeBinDir, 'yarn');
       writeFileSync(fakeYarnPath, '#!/bin/sh\nexit 1', { mode: 0o777 });
-      oldPath = process.env.PATH;
       process.env.PATH = `${fakeBinDir}:${process.env.PATH}`;
-
-      // If we're running via a yarn script like `yarn test`, then we'll have
-      // a whole bunch of npm_* environment variables set by yarn that can mess
-      // things up, so let's scrub them.
-      Object.keys(process.env).forEach((key) => {
-        if (key.substr(0, 'npm_'.length) === 'npm_') {
-          delete process.env[key];
-        }
-      });
 
       let { name: tmpDir } = tmp.dirSync();
       process.chdir(tmpDir);
@@ -106,13 +110,12 @@ describe('end-to-end', function() {
       return ember('new', 'ee-test-app').then(() => {
         process.chdir('ee-test-app');
 
-        return ember('install', `ember-electron@file:${packageTmpDir}/ember-electron.tgz`);
+        return ember('install', `ember-electron@file:${packageTmpDir}/package`);
       });
     });
 
     after(() => {
       process.chdir(rootDir);
-      process.env.PATH = oldPath;
     });
 
     runTests();
